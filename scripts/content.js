@@ -3,17 +3,20 @@ const BTC_SATOSHIS = 100000000;
 const MAGNITUDE_MAP = {
     'hundred': 100,
     'thousand': 1000,
+    'k': 1000, // Added support for k (e.g., 10k)
     'million': 1000000,
+    'm': 1000000, // Added support for M (e.g., 5M)
     'billion': 1000000000,
+    'b': 1000000000, // Added support for B (e.g., 1B)
     'trillion': 1000000000000
 };
 
 // --- Regex to find prices ---
 // Captures 1: Currency Symbol ($, £, €)
 // Captures 2: Numerical part (e.g., 3, 500, 1,000.50)
-// Captures 3: Optional magnitude word (e.g., hundred, thousand)
+// Captures 3: Optional magnitude word OR single letter suffix (e.g., thousand, million, k, M, B)
 // The \b ensures we match a whole word if a magnitude is present.
-const PRICE_REGEX = /([£$€])\s*(\d{1,3}(?:[,\s]?\d{3})*(?:\.\d+)?)\s?(hundred|thousand|million|billion|trillion)?\b/gi;
+const PRICE_REGEX = /([£$€])\s*(\d{1,3}(?:[,\s]?\d{3})*(?:\.\d+)?)\s?(hundred|thousand|million|billion|trillion|k|m|b)?\b/gi;
 
 // Threshold: 0.5 BTC (50,000,000 Satoshis)
 const BTC_THRESHOLD = 50000000;
@@ -24,9 +27,9 @@ let BTC_USD_RATE = null;
 // --- Helper Functions ---
 
 /**
- * Parses a price string potentially followed by a magnitude word (e.g., "5 thousand").
+ * Parses a price string potentially followed by a magnitude word (e.g., "5 thousand" or "5m").
  * @param {string} priceString The numerical part of the price (e.g., "5", "100.5").
- * @param {string | undefined} magnitudeWord The magnitude word (e.g., "thousand", or undefined).
+ * @param {string | undefined} magnitudeWord The magnitude word or suffix (e.g., "thousand", "k", or undefined).
  * @returns {number | null} The final calculated numerical value, or null on error.
  */
 function parsePriceMagnitude(priceString, magnitudeWord) {
@@ -40,7 +43,7 @@ function parsePriceMagnitude(priceString, magnitudeWord) {
         return baseValue;
     }
 
-    // 2. Look up the multiplier
+    // 2. Look up the multiplier (case-insensitive due to the 'i' flag in the regex)
     const multiplier = MAGNITUDE_MAP[magnitudeWord.toLowerCase()];
 
     if (!multiplier) {
