@@ -1,108 +1,87 @@
-// Default state is enabled
+// Manages the state of the plugin (ON/OFF) and handles script injection.
+
+// Set default state to 'ON' upon installation
 chrome.runtime.onInstalled.addListener(async () => {
-    // Check if the state already exists. We only set the default if it's undefined (first install).
     const { isEnabled } = await chrome.storage.local.get('isEnabled');
-
     if (isEnabled === undefined) {
-        // If undefined (first run), set the default to enabled (true)
         await chrome.storage.local.set({ isEnabled: true });
-        
-        // Set the global default badge status
-        chrome.action.setBadgeText({ text: 'ON' });
-        chrome.action.setBadgeBackgroundColor({ color: '#f7931a' });
     }
 });
 
-/**
- * Ensures the badge state is correctly displayed immediately when a new tab or window is opened.
- */
-chrome.tabs.onCreated.addListener(async (tab) => {
-    if (tab.id) {
-        const { isEnabled } = await chrome.storage.local.get('isEnabled');
-
-        const badgeText = isEnabled ? 'ON' : 'OFF';
-        const badgeColor = isEnabled ? '#f7931a' : '#777777';
-
-        // Set the badge for the new tab ID
-        chrome.action.setBadgeText({ tabId: tab.id, text: badgeText });
-        chrome.action.setBadgeBackgroundColor({ tabId: tab.id, color: badgeColor });
-    }
-});
-
-/**
- * Ensures the badge state is correctly displayed whenever a tab is updated (reloaded or navigated).
- * This also handles the automatic re-injection of the script if the extension is enabled.
- */
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-    // Only proceed when the tab has finished loading
-    if (changeInfo.status === 'complete' && tab.url && !tab.url.startsWith('chrome')) {
-        const { isEnabled } = await chrome.storage.local.get('isEnabled');
-
-        const badgeText = isEnabled ? 'ON' : 'OFF';
-        const badgeColor = isEnabled ? '#f7931a' : '#777777';
-
-        // 1. Update the badge for this specific tab to reflect the saved state
-        chrome.action.setBadgeText({ tabId: tabId, text: badgeText });
-        chrome.action.setBadgeBackgroundColor({ tabId: tabId, color: badgeColor });
-
-        // 2. If the extension is enabled, run the conversion script on the newly loaded page
-        if (isEnabled) {
-            // Adding a small delay helps avoid race conditions where the 'complete' status fires 
-            // slightly before the DOM is fully ready for script injection.
-            setTimeout(async () => {
-                try {
-                    // Rerun injection on the new page load
-                    await chrome.scripting.executeScript({
-                        target: { tabId: tabId },
-                        files: ['scripts/content.js']
-                    });
-                } catch (e) {
-                    // Log errors but prevent crashing (e.g., trying to inject into chrome:// pages)
-                    if (!e.message.includes('Cannot access a chrome')) {
-                        console.error("Failed to inject content script on tab update:", e);
-                    }
-                }
-            }, 100); // Wait 100ms
-        }
-    }
-});
-
-
-/**
- * Handle clicks on the extension icon to toggle state.
- */
+// Listener for icon click to toggle state
 chrome.action.onClicked.addListener(async (tab) => {
-    // 1. Get the current state and calculate the new state
     const { isEnabled } = await chrome.storage.local.get('isEnabled');
     const newState = !isEnabled;
 
-    // 2. Save the new state
     await chrome.storage.local.set({ isEnabled: newState });
 
-    // 3. Update the icon/badge immediately (The onUpdated listener will handle persistence)
+    // Update the badge text and color immediately
     const badgeText = newState ? 'ON' : 'OFF';
     const badgeColor = newState ? '#f7931a' : '#777777';
 
-    chrome.action.setBadgeText({ tabId: tab.id, text: badgeText });
-    chrome.action.setBadgeBackgroundColor({ tabId: tab.id, color: badgeColor });
+    chrome.action.setBadgeText({ text: badgeText, tabId: tab.id });
+    chrome.action.setBadgeBackgroundColor({ color: badgeColor, tabId: tab.id });
 
-    if (newState) {
-        // --- ENABLE: Inject immediately for the current page
-        console.log("Price converter enabled. Injecting script.");
+    // Reload the current page to inject/remove the script cleanly
+    chrome.tabs.reload(tab.id);
+});
+
+// Listener for tab creation (sets the badge color/text immediately)
+chrome.tabs.onCreated.addListener(async (tab) => {
+    // Check global state
+    const { isEnabled } = await chrome.storage.local.get('isEnabled');
+
+    const badgeText = isEnabled ? 'ON' : 'OFF';
+    const badgeColor = isEnabled ? '#f7931a' : '#777777';
+
+    if (tab.id) {
+        chrome.action.setBadgeText({ text: badgeText, tabId: tab.id });
+        chrome.action.setBadgeBackgroundColor({ color: badgeColor, tabId: tab.id });
+    }
+});
+
+// Listener for tab updates (only handles state persistence/badge update across navigation)
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    // 1. Get the current state
+    const { isEnabled } = await chrome.storage.local.get('isEnabled');
+
+    // 2. Always update the badge state based on the stored preference
+    const badgeText = isEnabled ? 'ON' : 'OFF';
+    const badgeColor = isEnabled ? '#f7931a' : '#777777';
+    
+    chrome.action.setBadgeText({ text: badgeText, tabId: tabId });
+    chrome.action.setBadgeBackgroundColor({ color: badgeColor, tabId: tabId });
+    
+    // NOTE: Script injection logic is now in chrome.webNavigation.onCompleted for reliability.
+});
+
+// NEW: Listener for web navigation completion (for reliable script injection)
+// Requires "webNavigation" permission in manifest.json
+chrome.webNavigation.onCompleted.addListener(async (details) => {
+    // Ensure we only process the main frame (frameId 0) to prevent injection into iframes
+    if (details.frameId !== 0) return;
+
+    // 1. Get the current state
+    const { isEnabled } = await chrome.storage.local.get('isEnabled');
+    
+    // 2. Inject the script if enabled
+    if (isEnabled) {
         try {
+            // Use the URL from details object for robust filtering
+            if (!details.url || details.url.startsWith('chrome://') || details.url.startsWith('about:') || details.url.startsWith('data:')) {
+                 console.warn(`[BTC Converter] Internal or restricted page, skipping injection for tab ${details.tabId}.`);
+                 return;
+            }
+
             await chrome.scripting.executeScript({
-                target: { tabId: tab.id },
+                target: { tabId: details.tabId },
                 files: ['scripts/content.js']
             });
+            console.log(`[BTC Converter] Script injected into tab ${details.tabId}.`);
         } catch (e) {
-            console.error("Failed to inject content script on click:", e);
+            // This handles final permission errors (e.g., trying to inject on the Chrome Web Store) 
+            console.warn(`[BTC Converter] Script injection prevented for tab ${details.tabId}: ${e.message}`);
         }
-    } else {
-        // --- DISABLE: Reload the tab to clear all injected content/styles
-        // The subsequent reload will hit the onUpdated listener, which will see newState is false, 
-        // set the badge to 'OFF' and SKIP the script injection.
-        console.log("Price converter disabled. Reloading page to clear changes.");
-        chrome.tabs.reload(tab.id);
     }
 });
 
