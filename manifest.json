@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Satoshi the web",
+  "version": "1.0",
+  "description": "Convert prices into BTC friendly formats",
+  "content_scripts": [
+    {
+      "js": ["scripts/content.js"],
+      "matches": [
+          "http://*/*",
+          "https://*/*"
+      ]
+    }
+  ]
+}
