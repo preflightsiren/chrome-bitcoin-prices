@@ -1,15 +1,18 @@
 {
   "manifest_version": 3,
-  "name": "Satoshi the web",
+  "name": "Satoshi Price Converter",
   "version": "1.0",
-  "description": "Convert prices into BTC friendly formats",
-  "content_scripts": [
-    {
-      "js": ["scripts/content.js"],
-      "matches": [
-          "http://*/*",
-          "https://*/*"
-      ]
-    }
-  ]
+  "description": "Converts fiat prices on a page to Bitcoin (sats or BTC).",
+  "action": {
+    "default_title": "Toggle Price Converter"
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "background": {
+    "service_worker": "scripts/background.js"
+  }
 }
+
