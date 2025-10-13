@@ -16,11 +16,9 @@ chrome.action.onClicked.addListener(async (tab) => {
     await chrome.storage.local.set({ isEnabled: newState });
 
     // Update the badge text and color immediately
-    const badgeText = newState ? 'ON' : 'OFF';
-    const badgeColor = newState ? '#f7931a' : '#777777';
+    const iconName = newState ? 'icon-16.png' : 'icon-16-disabled.png';
 
-    chrome.action.setBadgeText({ text: badgeText, tabId: tab.id });
-    chrome.action.setBadgeBackgroundColor({ color: badgeColor, tabId: tab.id });
+    chrome.action.setIcon({ path: "/icons/"+iconName }, () => {});
 
     // Reload the current page to inject/remove the script cleanly
     chrome.tabs.reload(tab.id);
@@ -31,12 +29,10 @@ chrome.tabs.onCreated.addListener(async (tab) => {
     // Check global state
     const { isEnabled } = await chrome.storage.local.get('isEnabled');
 
-    const badgeText = isEnabled ? 'ON' : 'OFF';
-    const badgeColor = isEnabled ? '#f7931a' : '#777777';
+    const iconName = newState ? 'icon-16.png' : 'icon-16-disabled.png';
 
     if (tab.id) {
-        chrome.action.setBadgeText({ text: badgeText, tabId: tab.id });
-        chrome.action.setBadgeBackgroundColor({ color: badgeColor, tabId: tab.id });
+        chrome.action.setIcon({ path: "/icons/"+iconName }, () => {});
     }
 });
 
@@ -46,11 +42,9 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     const { isEnabled } = await chrome.storage.local.get('isEnabled');
 
     // 2. Always update the badge state based on the stored preference
-    const badgeText = isEnabled ? 'ON' : 'OFF';
-    const badgeColor = isEnabled ? '#f7931a' : '#777777';
-    
-    chrome.action.setBadgeText({ text: badgeText, tabId: tabId });
-    chrome.action.setBadgeBackgroundColor({ color: badgeColor, tabId: tabId });
+    const iconName = newState ? 'icon-16.png' : 'icon-16-disabled.png';
+
+    chrome.action.setIcon({ path: "/icons/"+iconName }, () => {});
     
     // NOTE: Script injection logic is now in chrome.webNavigation.onCompleted for reliability.
 });
