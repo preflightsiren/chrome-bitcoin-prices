@@ -207,20 +207,26 @@ function convertPricesToSats(element) {
 
             // 2. Approximate USD rate for non-USD currencies (for better Sat conversion)
             let usdValue;
+            let estimatedCurrencyName = 'USD'; // Default to USD
+            
             if (currencySymbol === '$') {
                 // Approximate dollar type (CAD, AUD, USD default)
                 const dollarCurrency = approximateDollarCurrency();
                 // Convert approximated dollar value to true USD value using the fixed approximation rate
-                usdValue = numericalValue * dollarCurrency.rate; 
+                usdValue = numericalValue * dollarCurrency.rate;
+                estimatedCurrencyName = dollarCurrency.name; // Capture the estimated name
             } else if (currencySymbol === '£') {
                 // Assume GBP
                 usdValue = numericalValue * 1.25; // Approximate GBP to USD rate
+                estimatedCurrencyName = 'GBP'; // Set GBP name
             } else if (currencySymbol === '€') {
                 // Assume EUR
                 usdValue = numericalValue * 1.08; // Approximate EUR to USD rate
+                estimatedCurrencyName = 'EUR'; // Set EUR name
             } else {
-                // Fallback: Assume the captured currency is 1:1 with USD if no approximation logic exists
+                // Fallback: Use USD as the conversion base
                 usdValue = numericalValue;
+                estimatedCurrencyName = 'USD';
             }
 
             // 3. Convert USD value to Satoshis and format
@@ -240,7 +246,8 @@ function convertPricesToSats(element) {
             const span = document.createElement('span');
             span.className = 'bitcoin-price-converted';
             span.textContent = convertedText;
-            span.title = `Original: ${originalPriceString} (Rate: 1₿ ≈ $${BTC_USD_RATE.toFixed(2)})`;
+            // UPDATED TITLE: Show original price and its estimated currency
+            span.title = `Original Price: ${originalPriceString} ${estimatedCurrencyName}`;
             
             // 5. Store the replacement data
             replacements.push({
