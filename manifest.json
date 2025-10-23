@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Satoshi Price Converter",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Converts fiat prices on a page to Bitcoin (sats or BTC).",
   "action": {
     "default_title": "Toggle Price Converter"
