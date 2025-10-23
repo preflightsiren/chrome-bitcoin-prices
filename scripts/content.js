@@ -17,7 +17,7 @@ const MAGNITUDE_MAP = {
 };
 
 // Regex to capture currency symbol, number, and optional magnitude word/ordinal (k, M, B)
-const PRICE_REGEX = /([\$€£])\s?(\d{1,3}(?:[,\s]\d{3})*(?:\.\d+)?)\s?(hundred|thousand|million|billion|trillion|k|m|b)?\b/gi;
+const PRICE_REGEX = /([\$€£])\s?(\d{1,3}(?:[,\s]\d{3})*(?:\.\d+)?)\s?(hundred|thousand|million|billion|trillion|k|m|b|t)?\b/gi;
 
 /**
  * Helper to get the numerical value from a price string, supporting magnitude words/ordinals.
@@ -129,7 +129,9 @@ function convertPricesToSats(targetElement, btcPrice) {
         });
         
         // If no replacements were made, move to the next node
-        if (tempDiv.innerHTML === text) continue;
+        if (tempDiv.innerHTML === text || match.length === 0) {
+            continue;
+        }
 
         // --- DOM MANIPULATION AND TREEWALKER REPOSITIONING ---
         // This is necessary to avoid issues after modifying the DOM
