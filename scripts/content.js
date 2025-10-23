@@ -96,6 +96,7 @@ function convertPricesToSats(targetElement, btcPrice) {
         const text = node.nodeValue;
         if (!text) continue;
 
+        let changed = false;
         let match;
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = text.replace(PRICE_REGEX, (match, currencySymbol, priceValue, magnitudeWord) => {
@@ -125,11 +126,12 @@ function convertPricesToSats(targetElement, btcPrice) {
             const originalPriceString = `${currencySymbol}${priceValue}${magnitudeWord || ''}`;
             const hoverTitle = `Original Price: ${originalPriceString} ${estimatedCurrencyName}`;
 
+            changed = true;
             return `<span class="btc-converted-price" title="${hoverTitle}">${btcFormat}</span>`;
         });
         
         // If no replacements were made, move to the next node
-        if (tempDiv.innerHTML === text || match.length === 0) {
+        if (tempDiv.innerHTML === text || !changed) {
             continue;
         }
 
